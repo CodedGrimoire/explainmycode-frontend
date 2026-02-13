@@ -1,15 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Editor from "@monaco-editor/react";
 import CodeEditor from "../editor/CodeEditor";
+import { auth } from "@/lib/firebase";
+import { onAuthStateChanged, User } from "firebase/auth";
 
 const ExplainSection = () => {
   const [code, setCode] = useState<string>("");
   const [language, setLanguage] = useState<string>("cpp");
   const [explanation, setExplanation] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const isLoggedIn = false;
+  const [user, setUser] = useState<User | null>(null);
+  const apiBase = useMemo(
+    () => process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001",
+    []
+  );
 
   function Card({
     title,
@@ -30,6 +36,11 @@ const ExplainSection = () => {
     );
   }
 
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return () => unsub();
+  }, []);
+
   const handleGenerate = async () => {
     if (!code.trim()) {
       setExplanation(null);
@@ -38,7 +49,7 @@ const ExplainSection = () => {
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3001/api/explanations/generate", {
+      const response = await fetch(`${apiBase}/api/explanations/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, language }),
@@ -63,16 +74,37 @@ const ExplainSection = () => {
   };
 
   const handleSave = async () => {
-    if (!isLoggedIn) {
-      alert("Login required to save explanations");
-      return;
-    }
+    if (!user) return alert("Login required to save explanations");
 
     try {
-      await fetch("/api/explanations/save", {
+      const idToken = await user.getIdToken?.();
+      // Ensure user exists in backend
+      await fetch(`${apiBase}/api/auth/sync-user`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, language, explanation }),
+        body: JSON.stringify({ uid: user.uid, email: user.email }),
+      });
+      await fetch(`${apiBase}/api/explanations/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: user.uid,
+          code,
+          language,
+          explanation: JSON.stringify(explanation),
+          complexity: explanation?.timeComplexity,
+          summary: explanation?.summary,
+          timeComplexity: explanation?.timeComplexity,
+          spaceComplexity: explanation?.spaceComplexity,
+          logicBreakdown: explanation?.logicBreakdown,
+          edgeCases: explanation?.edgeCases,
+          bugs: explanation?.bugs,
+          beginnerExplanation: explanation?.beginnerExplanation,
+          recommendation: explanation?.recommendation,
+          optimizedVersion: explanation?.optimizedVersion,
+          keyConcepts: explanation?.keyConcepts,
+          idToken,
+        }),
       });
       alert("Saved!");
     } catch (error) {
@@ -94,10 +126,10 @@ const ExplainSection = () => {
         <div className="flex flex-col gap-4">
           <CodeEditor value={code} onChange={setCode} language={language} />
 
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="text-sm text-slate-200" htmlFor="language">
-              Language
-            </label>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="text-sm text-slate-200" htmlFor="language">
+            Language
+          </label>
             <select
               id="language"
               value={language}
@@ -111,6 +143,9 @@ const ExplainSection = () => {
             </select>
 
             <div className="ml-auto flex items-center gap-3">
+              {user && (
+                <span className="text-xs text-slate-400">Signed in as {user.email}</span>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -216,15 +251,30 @@ const ExplainSection = () => {
                       )}
                     </Card>
 
-                    <Card title="Beginner Explanation" className="border-white/10 bg-white/5">
-                      {explanation?.beginnerExplanation || "A beginner-friendly summary will appear here."}
-                    </Card>
+                  <Card title="Beginner Explanation" className="border-white/10 bg-white/5">
+                    {explanation?.beginnerExplanation || "A beginner-friendly summary will appear here."}
+                  </Card>
 
-                    <Card title="Key Concepts" className="border-white/10 bg-white/5">
-                      <div className="flex flex-wrap gap-2">
-                        {explanation?.keyConcepts?.length ? (
-                          explanation.keyConcepts.map((k: string, i: number) => (
-                            <span
+                  <Card title="Edge Cases" className="border-white/10 bg-white/5">
+                    {explanation?.edgeCases?.length ? (
+                      <ul className="space-y-2">
+                        {explanation.edgeCases.map((edge: string, i: number) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="material-icons text-sm text-primary">adjust</span>
+                            <span>{edge}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-slate-300">No edge cases were identified for this snippet.</p>
+                    )}
+                  </Card>
+
+                  <Card title="Key Concepts" className="border-white/10 bg-white/5">
+                    <div className="flex flex-wrap gap-2">
+                      {explanation?.keyConcepts?.length ? (
+                        explanation.keyConcepts.map((k: string, i: number) => (
+                          <span
                               key={i}
                               className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
                             >
