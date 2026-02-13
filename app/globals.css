@@ -2,25 +2,68 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0f172a;
+  --background-dark: #101622;
+  --background-light: #f6f6f8;
+  --primary: #135bec;
+  --primary-dark: #0f4cc5;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-background-dark: var(--background-dark);
+  --color-background-light: var(--background-light);
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-inter);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground: #e2e8f0;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  scroll-behavior: smooth;
+}
+
+.glass {
+  background: rgba(16, 22, 34, 0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(19, 91, 236, 0.1);
+}
+
+.code-glow {
+  box-shadow: 0 0 50px -12px rgba(19, 91, 236, 0.25);
+}
+
+.grid-pattern {
+  background-image: radial-gradient(rgba(19, 91, 236, 0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.code-snippet {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #2d333f;
+  border-radius: 10px;
 }
