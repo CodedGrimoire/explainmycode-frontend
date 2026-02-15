@@ -2,6 +2,7 @@ import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
 import { notFound } from "next/navigation";
 import CodeViewer from "./CodeViewer";
+import { gunzipSync } from "node:zlib";
 
 const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
 
@@ -15,6 +16,42 @@ async function fetchTutorial(id: string) {
   const res = await fetch(`${apiBase}/api/explanations/learn/${id}`, { cache: "no-store" });
   if (res.ok) return { type: "tutorial" as const, data: await res.json() };
   return null;
+}
+
+function sanitizeCode(raw?: string | null) {
+  if (!raw || typeof raw !== "string") return "";
+  // If already readable ASCII/UTF-8 with mostly printable chars, return as is
+  const printableRatio =
+    raw.split("").filter((c) => {
+      const code = c.charCodeAt(0);
+      return code === 9 || code === 10 || code === 13 || (code >= 32 && code <= 126);
+    }).length / raw.length;
+  if (printableRatio > 0.9) return raw;
+
+  // Try gunzip if data looks gzipped (starts with gzip magic bytes)
+  if (raw.charCodeAt(0) === 0x1f && raw.charCodeAt(1) === 0x8b) {
+    try {
+      const buffer = Buffer.from(raw, "binary");
+      return gunzipSync(buffer).toString("utf8");
+    } catch {
+      // fall through
+    }
+  }
+
+  // As a fallback, try base64 decode then gunzip or plain utf8
+  try {
+    const b64 = Buffer.from(raw, "base64");
+    if (b64.length > 0) {
+      if (b64[0] === 0x1f && b64[1] === 0x8b) {
+        return gunzipSync(b64).toString("utf8");
+      }
+      return b64.toString("utf8");
+    }
+  } catch {
+    // ignore
+  }
+
+  return raw;
 }
 
 export default async function HistoryDetailPage({ params }: { params: { id: string } }) {
@@ -117,7 +154,7 @@ export default async function HistoryDetailPage({ params }: { params: { id: stri
                 Code Example ({data.tutorial?.codeExample?.language || data.language})
               </h3>
               <CodeViewer
-                code={data.tutorial?.codeExample?.code}
+                code={sanitizeCode(data.tutorial?.codeExample?.code)}
                 language={data.tutorial?.codeExample?.language || data.language || "plaintext"}
               />
             </div>
@@ -125,11 +162,15 @@ export default async function HistoryDetailPage({ params }: { params: { id: stri
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <div className="text-xs font-semibold text-primary">Time Complexity</div>
-                <div className="text-sm text-slate-100">{data.tutorial?.complexity?.time || "—"}</div>
+                <div className="text-sm text-slate-100">
+                  {data.tutorial?.complexity?.time || data.complexity || "—"}
+                </div>
               </div>
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                 <div className="text-xs font-semibold text-primary">Space Complexity</div>
-                <div className="text-sm text-slate-100">{data.tutorial?.complexity?.space || "—"}</div>
+                <div className="text-sm text-slate-100">
+                  {data.tutorial?.complexity?.space || data.spaceComplexity || "—"}
+                </div>
               </div>
             </div>
 

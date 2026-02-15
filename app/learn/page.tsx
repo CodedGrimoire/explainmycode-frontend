@@ -68,6 +68,28 @@ export default function LearnPage() {
     []
   );
 
+  const cleanText = (raw?: string | null) => {
+    if (!raw) return "";
+    const printableRatio =
+      raw.split("").filter((c) => {
+        const code = c.charCodeAt(0);
+        return code === 9 || code === 10 || code === 13 || (code >= 32 && code <= 126);
+      }).length / raw.length;
+    if (printableRatio > 0.88) return raw;
+    try {
+      const decoded = atob(raw);
+      const printableRatioDecoded =
+        decoded.split("").filter((c) => {
+          const code = c.charCodeAt(0);
+          return code === 9 || code === 10 || code === 13 || (code >= 32 && code <= 126);
+        }).length / decoded.length;
+      if (printableRatioDecoded > printableRatio) return decoded;
+    } catch {
+      // ignore
+    }
+    return raw;
+  };
+
   const [topic, setTopic] = useState("Dijkstra's algorithm");
   const [level, setLevel] = useState("beginner");
   const [category, setCategory] = useState("algorithm");
@@ -265,7 +287,7 @@ export default function LearnPage() {
           <div className="rounded-lg border border-primary/30 bg-primary/10 p-4">
             <h3 className="text-sm font-semibold text-primary">Pseudocode</h3>
             <pre className="mt-2 whitespace-pre-wrap text-xs text-slate-100">
-              {tutorial.pseudocode}
+              {cleanText(tutorial.pseudocode)}
             </pre>
           </div>
 
@@ -277,7 +299,7 @@ export default function LearnPage() {
               </span>
             </div>
             <pre className="custom-scrollbar max-h-80 overflow-auto whitespace-pre text-xs text-slate-100">
-{tutorial.codeExample?.code}
+{cleanText(tutorial.codeExample?.code)}
             </pre>
           </div>
 
