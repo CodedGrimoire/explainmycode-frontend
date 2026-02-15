@@ -5,9 +5,9 @@ import { Tutorial } from "../../../_lib/models/Tutorial";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectDB();
-  const { id } = params;
+  const { id } = await params;
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     return NextResponse.json({ message: "Invalid id" }, { status: 400 });
   }
@@ -18,9 +18,9 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   return NextResponse.json(tutorial);
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectDB();
-  const { id } = params;
+  const { id } = await params;
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     return NextResponse.json({ message: "Invalid id" }, { status: 400 });
   }

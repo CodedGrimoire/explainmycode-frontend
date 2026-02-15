@@ -12,6 +12,7 @@ const ExplainSection = () => {
   const [explanation, setExplanation] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const apiBase = useMemo(
     () => process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001",
     []
@@ -48,6 +49,7 @@ const ExplainSection = () => {
     }
 
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch(`${apiBase}/api/explanations/generate`, {
         method: "POST",
@@ -56,7 +58,8 @@ const ExplainSection = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Request failed");
+        const detail = await response.text();
+        throw new Error(detail || "Request failed");
       }
 
       const data = await response.json();
@@ -67,6 +70,7 @@ const ExplainSection = () => {
       setExplanation(parsed);
     } catch (error) {
       console.error(error);
+      setError("Could not generate the explanation right now. Please try again in a moment.");
       setExplanation(null);
     } finally {
       setLoading(false);
@@ -146,11 +150,17 @@ const ExplainSection = () => {
               {user && (
                 <span className="text-xs text-slate-400">Signed in as {user.email}</span>
               )}
+              {error && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                  {error}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => {
                   setCode("");
                   setExplanation(null);
+                  setError(null);
                 }}
                 className="rounded-lg border border-white/20 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:scale-105 hover:border-primary/60 hover:bg-white/5"
               >

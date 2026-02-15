@@ -17,8 +17,8 @@ async function fetchTutorial(id: string) {
   return null;
 }
 
-export default async function HistoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function HistoryDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const explanation = await fetchExplanation(id);
   const tutorial = explanation ? null : await fetchTutorial(id);
 

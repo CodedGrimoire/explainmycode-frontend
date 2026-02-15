@@ -5,9 +5,9 @@ import { Explanation } from "../../_lib/models/Explanation";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectDB();
-  const { id } = params;
+  const { id } = await params;
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     return NextResponse.json({ message: "Invalid id" }, { status: 400 });
   }
@@ -16,9 +16,9 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
   return NextResponse.json(explanation);
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectDB();
-  const { id } = params;
+  const { id } = await params;
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     return NextResponse.json({ message: "Invalid id" }, { status: 400 });
   }
@@ -26,9 +26,9 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
   return NextResponse.json({ message: "Explanation deleted" });
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await connectDB();
-  const { id } = params;
+  const { id } = await params;
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     return NextResponse.json({ message: "Invalid explanation id" }, { status: 400 });
   }
