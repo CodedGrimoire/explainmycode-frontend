@@ -4,16 +4,20 @@ import { notFound } from "next/navigation";
 import CodeViewer from "./CodeViewer";
 import { gunzipSync } from "node:zlib";
 
-const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
+const apiBase =
+  process.env.NEXT_PUBLIC_API_BASE ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
 
 async function fetchExplanation(id: string) {
-  const res = await fetch(`${apiBase}/api/explanations/${id}`, { cache: "no-store" });
+  const base = apiBase || "";
+  const res = await fetch(`${base}/api/explanations/${id}`, { cache: "no-store" });
   if (res.ok) return { type: "explanation" as const, data: await res.json() };
   return null;
 }
 
 async function fetchTutorial(id: string) {
-  const res = await fetch(`${apiBase}/api/explanations/learn/${id}`, { cache: "no-store" });
+  const base = apiBase || "";
+  const res = await fetch(`${base}/api/explanations/learn/${id}`, { cache: "no-store" });
   if (res.ok) return { type: "tutorial" as const, data: await res.json() };
   return null;
 }
