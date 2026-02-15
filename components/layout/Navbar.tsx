@@ -5,11 +5,14 @@ import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import Link from "next/link";
 import AuthModal from "@/components/auth/AuthModal";
 import { auth } from "@/lib/firebase";
+import { usePathname } from "next/navigation";
 
 const Navbar = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"signin" | "signup">("signin");
   const [user, setUser] = useState<User | null>(null);
+  const [redirectAfterAuth, setRedirectAfterAuth] = useState<string | null>(null);
+  const pathname = usePathname();
   const apiBase = useMemo(
     () => process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001",
     []
@@ -36,6 +39,46 @@ const Navbar = () => {
     syncUser();
   }, [user, apiBase]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const authTrigger = params.get("auth");
+    const redirect = params.get("redirect");
+    if (authTrigger === "1") {
+      requestAnimationFrame(() => {
+        setModalOpen(true);
+        setModalMode("signin");
+        if (redirect) setRedirectAfterAuth(redirect);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!modalOpen && redirectAfterAuth && user) {
+      window.location.href = redirectAfterAuth;
+    }
+  }, [modalOpen, redirectAfterAuth, user]);
+
+  const NavLink = ({
+    href,
+    label,
+    active,
+  }: {
+    href: string;
+    label: string;
+    active: boolean;
+  }) => (
+    <Link
+      href={href}
+      className={`transition-colors ${
+        active
+          ? "text-primary underline decoration-2 underline-offset-8"
+          : "text-slate-100 hover:text-primary"
+      }`}
+    >
+      {label}
+    </Link>
+  );
+
   return (
     <>
       <header className="fixed top-0 z-50 w-full">
@@ -51,15 +94,10 @@ const Navbar = () => {
                 </span>
               </Link>
               <div className="hidden items-center gap-8 text-sm font-semibold md:flex">
-                <Link href="/" className="text-slate-100 transition-colors hover:text-primary">
-                  Home
-                </Link>
-                <Link href="/#explain" className="text-slate-100 transition-colors hover:text-primary">
-                  Explain
-                </Link>
-                <Link href="/history" className="text-slate-100 transition-colors hover:text-primary">
-                  History
-                </Link>
+                <NavLink href="/" label="Home" active={pathname === "/"} />
+                <NavLink href="/#explain" label="Explain" active={pathname === "/#explain"} />
+                <NavLink href="/learn" label="Learn" active={pathname?.startsWith("/learn") || false} />
+                <NavLink href="/history" label="History" active={pathname?.startsWith("/history") || false} />
                 {user ? (
                   <>
                     <span className="text-slate-200">{user.email ?? "Account"}</span>
