@@ -1,218 +1,160 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { auth } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import Navbar from "@/components/layout/Navbar";
+import { notFound } from "next/navigation";
+import CodeViewer from "./CodeViewer";
 
-type Explanation = {
-  _id: string;
-  code?: string;
-  language?: string;
-  summary?: string;
-  timeComplexity?: string;
-  spaceComplexity?: string;
-  logicBreakdown?: string[];
-  edgeCases?: string[];
-  bugs?: string[];
-  beginnerExplanation?: string;
-  recommendation?: string;
-  optimizedVersion?: string;
-  keyConcepts?: string[];
-  createdAt?: string;
-};
+const apiBase = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001";
 
-export default function HistoryDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-  const apiBase = useMemo(
-    () => process.env.NEXT_PUBLIC_API_BASE || "http://localhost:3001",
-    []
-  );
-  const [item, setItem] = useState<Explanation | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [authed, setAuthed] = useState(false);
+async function fetchExplanation(id: string) {
+  const res = await fetch(`${apiBase}/api/explanations/${id}`, { cache: "no-store" });
+  if (res.ok) return { type: "explanation" as const, data: await res.json() };
+  return null;
+}
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setAuthed(!!u));
-    return () => unsub();
-  }, []);
+async function fetchTutorial(id: string) {
+  const res = await fetch(`${apiBase}/api/explanations/learn/${id}`, { cache: "no-store" });
+  if (res.ok) return { type: "tutorial" as const, data: await res.json() };
+  return null;
+}
 
-  useEffect(() => {
-    const fetchItem = async () => {
-      if (!id) return;
-      try {
-        const res = await fetch(`${apiBase}/api/explanations/${id}`);
-        if (res.status === 404) {
-          setItem(null);
-          return;
-        }
-        if (!res.ok) throw new Error("Failed to load analysis");
-        const data = await res.json();
-        setItem(data);
-      } catch (err) {
-        console.error(err);
-        setItem(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchItem();
-  }, [id, apiBase]);
+export default async function HistoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const explanation = await fetchExplanation(id);
+  const tutorial = explanation ? null : await fetchTutorial(id);
 
-  const Section = ({
-    title,
-    children,
-  }: {
-    title: string;
-    children: React.ReactNode;
-  }) => (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-primary/10">
-      <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-primary">
-        {title}
-      </h3>
-      <div className="text-sm leading-relaxed text-slate-200">{children}</div>
-    </div>
-  );
+  const payload = explanation || tutorial;
+  if (!payload) return notFound();
+
+  const { type, data } = payload;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#050912] via-[#0a1424] to-[#050912] text-slate-100">
+      <div className="pointer-events-none absolute inset-0 opacity-30">
+        <div className="grid-pattern absolute inset-0" />
+      </div>
       <Navbar />
-      <main className="mx-auto max-w-6xl px-4 pb-16 pt-28 sm:px-6 lg:px-8">
-        <button
-          onClick={() => router.back()}
-          className="mb-6 inline-flex items-center gap-2 rounded-lg border border-white/20 px-3 py-2 text-sm text-slate-200 hover:border-primary/60 hover:bg-white/5"
-        >
-          <span className="material-icons text-sm">arrow_back</span>
-          Back
-        </button>
+      <main className="relative mx-auto max-w-5xl px-4 pb-20 pt-24 sm:px-6 lg:px-8">
+        <div className="mb-6 flex items-center gap-2 text-sm text-primary">
+          <a href="/history" className="flex items-center gap-1 hover:underline">
+            <span className="material-icons text-xs">arrow_back</span>
+            Back to History
+          </a>
+          <span className="text-slate-500">/</span>
+          <span className="uppercase tracking-wide text-xs text-slate-300">{type}</span>
+        </div>
 
-        {loading ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-slate-200">
-            Loading analysis...
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold text-white">
+              {type === "explanation" ? data.summary || "Code Explanation" : data.tutorial?.title || data.topic}
+            </h1>
+            <p className="text-sm text-slate-400">
+              {type === "explanation"
+                ? `Language: ${data.language || "n/a"}`
+                : `${data.category || ""} • ${data.level || ""} • ${data.language || ""}`}
+            </p>
           </div>
-        ) : !authed ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-slate-200">
-            Please sign in to view this analysis.
+          <div className="rounded-full bg-primary/15 px-4 py-2 text-xs font-semibold text-primary">
+            {new Date(data.createdAt || Date.now()).toLocaleString()}
           </div>
-        ) : !item ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-slate-200">
-            Analysis not found.
-          </div>
-        ) : (
+        </div>
+
+        {type === "explanation" ? (
           <div className="space-y-6">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-primary/20">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-primary">Analysis</p>
-                  <h1 className="text-2xl font-bold text-white">
-                    {item.summary || "Explanation"}
-                  </h1>
-                  <p className="text-xs text-slate-400">
-                    {item.language || "Unknown language"} •{" "}
-                    {item.createdAt
-                      ? new Date(item.createdAt).toLocaleString()
-                      : "Unknown date"}
-                  </p>
-                </div>
-                <div className="flex gap-2 text-xs font-semibold">
-                  <span className="rounded-full bg-primary/15 px-3 py-1 text-primary">
-                    {item.timeComplexity || "Time N/A"}
-                  </span>
-                  <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-300">
-                    {item.spaceComplexity || "Space N/A"}
-                  </span>
-                </div>
-              </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-primary/20 backdrop-blur">
+              <h2 className="mb-3 text-sm font-semibold text-primary">Summary</h2>
+              <p className="text-slate-100 leading-relaxed">{data.summary || "No summary."}</p>
+            </div>
 
-              <div className="mt-4 rounded-lg border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-200">
-                <pre className="code-snippet whitespace-pre-wrap">{item.code}</pre>
-              </div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-primary">Code</h3>
+              <CodeViewer code={data.code} language={data.language || "plaintext"} />
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <Section title="Logic Breakdown">
-                {item.logicBreakdown?.length ? (
-                  <ol className="space-y-2">
-                    {item.logicBreakdown.map((step, i) => (
-                      <li key={i} className="flex gap-2">
-                        <span className="mt-0.5 h-5 w-5 rounded-full bg-primary/20 text-center text-xs font-bold text-primary">
-                          {i + 1}
-                        </span>
-                        <span>{step}</span>
-                      </li>
-                    ))}
-                  </ol>
-                ) : (
-                  <p className="text-slate-300">No breakdown provided.</p>
-                )}
-              </Section>
-
-              <Section title="Edge Cases">
-                {item.edgeCases?.length ? (
-                  <ul className="space-y-2">
-                    {item.edgeCases.map((edge, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="material-icons text-sm text-primary">adjust</span>
-                        <span>{edge}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-slate-300">No edge cases captured.</p>
-                )}
-              </Section>
-
-              <Section title="Bugs">
-                {item.bugs?.length ? (
-                  <ul className="space-y-2">
-                    {item.bugs.map((bug, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="material-icons text-sm text-red-400">bug_report</span>
-                        <span>{bug}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-slate-300">No bugs identified.</p>
-                )}
-              </Section>
-
-              <Section title="Beginner Explanation">
-                <p>{item.beginnerExplanation || "Not provided."}</p>
-              </Section>
-
-              <Section title="Recommendation">
-                <p>{item.recommendation || "No recommendation provided."}</p>
-              </Section>
-
-              <Section title="Key Concepts">
-                {item.keyConcepts?.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {item.keyConcepts.map((k, i) => (
-                      <span
-                        key={i}
-                        className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
-                      >
-                        {k}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-300">No key concepts captured.</p>
-                )}
-              </Section>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <div className="text-xs font-semibold text-primary">Time Complexity</div>
+                <div className="text-sm text-slate-100">{data.timeComplexity || data.complexity || "—"}</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <div className="text-xs font-semibold text-primary">Space Complexity</div>
+                <div className="text-sm text-slate-100">{data.spaceComplexity || "—"}</div>
+              </div>
             </div>
 
-            <Section title="Optimized Version">
-              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-xs text-slate-200">
-                <pre className="code-snippet whitespace-pre-wrap">
-                  {item.optimizedVersion || "No optimized version provided."}
-                </pre>
+            {data.logicBreakdown?.length ? (
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6">
+                <h3 className="text-sm font-semibold text-primary mb-3">Logic Breakdown</h3>
+                <ol className="space-y-2 text-sm text-slate-100">
+                  {data.logicBreakdown.map((step: string, i: number) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="mt-0.5 h-5 w-5 rounded-full bg-primary/20 text-center text-xs font-bold text-primary">{i + 1}</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
               </div>
-            </Section>
+            ) : null}
+
+            {data.bugs?.length ? (
+              <div className="rounded-2xl border border-red-400/20 bg-red-500/10 p-6">
+                <h3 className="text-sm font-semibold text-red-300 mb-2">Possible Bugs</h3>
+                <ul className="list-disc space-y-1 pl-4 text-sm text-slate-100">
+                  {data.bugs.map((b: string, i: number) => <li key={i}>{b}</li>)}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg shadow-primary/20 backdrop-blur">
+              <h2 className="mb-3 text-sm font-semibold text-primary">Theory</h2>
+              <p className="text-slate-100 leading-relaxed">{data.tutorial?.theory}</p>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-primary">
+                Code Example ({data.tutorial?.codeExample?.language || data.language})
+              </h3>
+              <CodeViewer
+                code={data.tutorial?.codeExample?.code}
+                language={data.tutorial?.codeExample?.language || data.language || "plaintext"}
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <div className="text-xs font-semibold text-primary">Time Complexity</div>
+                <div className="text-sm text-slate-100">{data.tutorial?.complexity?.time || "—"}</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <div className="text-xs font-semibold text-primary">Space Complexity</div>
+                <div className="text-sm text-slate-100">{data.tutorial?.complexity?.space || "—"}</div>
+              </div>
+            </div>
+
+            {data.tutorial?.implementationSteps?.length ? (
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6">
+                <h3 className="text-sm font-semibold text-primary mb-3">Implementation Steps</h3>
+                <ol className="space-y-2 text-sm text-slate-100">
+                  {data.tutorial.implementationSteps.map((step: string, i: number) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="mt-0.5 h-5 w-5 rounded-full bg-primary/20 text-center text-xs font-bold text-primary">{i + 1}</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ) : null}
+
+            {data.tutorial?.useCases?.length ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h3 className="text-sm font-semibold text-primary mb-3">Use Cases</h3>
+                <ul className="list-disc space-y-1 pl-4 text-sm text-slate-100">
+                  {data.tutorial.useCases.map((u: string, i: number) => <li key={i}>{u}</li>)}
+                </ul>
+              </div>
+            ) : null}
           </div>
         )}
       </main>
