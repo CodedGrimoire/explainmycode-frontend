@@ -284,24 +284,28 @@ export default function LearnPage() {
             </ol>
           </div>
 
-          <div className="rounded-lg border border-primary/30 bg-primary/10 p-4">
-            <h3 className="text-sm font-semibold text-primary">Pseudocode</h3>
-            <pre className="mt-2 whitespace-pre-wrap text-xs text-slate-100">
-              {cleanText(tutorial.pseudocode)}
-            </pre>
-          </div>
-
-          <div className="rounded-lg border border-white/10 bg-black/60 p-4">
-            <div className="mb-2 flex items-center justify-between text-xs text-slate-300">
-              <span>Code Example ({tutorial.codeExample?.language || language})</span>
-              <span className="text-primary">
-                Time {tutorial.complexity?.time} · Space {tutorial.complexity?.space}
-              </span>
+          {tutorial.pseudocode && (
+            <div className="rounded-lg border border-primary/30 bg-primary/10 p-4">
+              <h3 className="text-sm font-semibold text-primary">Pseudocode</h3>
+              <pre className="mt-2 whitespace-pre-wrap text-xs text-slate-100">
+                {cleanText(tutorial.pseudocode)}
+              </pre>
             </div>
-            <pre className="custom-scrollbar max-h-80 overflow-auto whitespace-pre text-xs text-slate-100">
+          )}
+
+          {tutorial.codeExample?.code && (
+            <div className="rounded-lg border border-white/10 bg-black/60 p-4">
+              <div className="mb-2 flex items-center justify-between text-xs text-slate-300">
+                <span>Code Example ({tutorial.codeExample?.language || language})</span>
+                <span className="text-primary">
+                  Time {tutorial.complexity?.time} · Space {tutorial.complexity?.space}
+                </span>
+              </div>
+              <pre className="custom-scrollbar max-h-80 overflow-auto whitespace-pre text-xs text-slate-100">
 {cleanText(tutorial.codeExample?.code)}
-            </pre>
-          </div>
+              </pre>
+            </div>
+          )}
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-lg border border-white/10 bg-white/5 p-4">

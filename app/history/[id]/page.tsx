@@ -149,15 +149,17 @@ export default async function HistoryDetailPage({ params }: { params: { id: stri
               <p className="text-slate-100 leading-relaxed">{data.tutorial?.theory}</p>
             </div>
 
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-primary">
-                Code Example ({data.tutorial?.codeExample?.language || data.language})
-              </h3>
-              <CodeViewer
-                code={sanitizeCode(data.tutorial?.codeExample?.code)}
-                language={data.tutorial?.codeExample?.language || data.language || "plaintext"}
-              />
-            </div>
+            {data.tutorial?.codeExample?.code && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-primary">
+                  Code Example ({data.tutorial?.codeExample?.language || data.language})
+                </h3>
+                <CodeViewer
+                  code={sanitizeCode(data.tutorial?.codeExample?.code)}
+                  language={data.tutorial?.codeExample?.language || data.language || "plaintext"}
+                />
+              </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-xl border border-white/10 bg-white/5 p-4">
