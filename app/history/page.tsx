@@ -131,7 +131,7 @@ const HistoryCard = ({ item }: { item: HistoryItem }) => {
   );
 };
 
-const TutorialCard = ({ item }: { item: TutorialItem }) => {
+const TutorialCard = ({ item, onDelete }: { item: TutorialItem; onDelete: (id: string) => void }) => {
   const t = item.tutorial || {};
   return (
     <div className="group overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-lg shadow-primary/10 backdrop-blur transition-all hover:-translate-y-1 hover:border-primary/40">
@@ -182,13 +182,17 @@ const TutorialCard = ({ item }: { item: TutorialItem }) => {
         ) : null}
       </div>
       <div className="flex items-center justify-between border-t border-white/10 px-5 py-3 transition-colors group-hover:bg-primary/10 bg-white/5">
-        <Link
-          href={`/history/${item._id}`}
-          className="flex items-center gap-1 text-sm font-semibold text-primary"
-        >
+        <Link href={`/history/${item._id}`} className="flex items-center gap-1 text-sm font-semibold text-primary">
           View Tutorial
           <span className="material-icons text-xs">arrow_forward</span>
         </Link>
+        <button
+          onClick={() => onDelete(item._id)}
+          className="text-slate-400 transition-colors hover:text-red-400"
+          title="Delete tutorial"
+        >
+          <span className="material-icons text-sm">delete_outline</span>
+        </button>
       </div>
     </div>
   );
@@ -244,6 +248,20 @@ export default function HistoryPage() {
     fetchHistory();
   }, [user, apiBase]);
 
+  const handleDeleteTutorial = async (id: string) => {
+    try {
+      const res = await fetch(`${apiBase}/api/explanations/learn/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        alert("Could not delete tutorial right now.");
+        return;
+      }
+      setTutorials((prev) => prev.filter((t) => t._id !== id));
+    } catch (err) {
+      console.error(err);
+      alert("Could not delete tutorial right now.");
+    }
+  };
+
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-[#050912] via-[#0a1424] to-[#050912] text-slate-100">
       <div className="pointer-events-none absolute inset-0 opacity-40">
@@ -294,7 +312,7 @@ export default function HistoryPage() {
                 <h2 className="text-xl font-bold text-white">Saved Tutorials</h2>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
                   {tutorials.map((t) => (
-                    <TutorialCard key={t._id} item={t} />
+                    <TutorialCard key={t._id} item={t} onDelete={handleDeleteTutorial} />
                   ))}
                 </div>
               </div>
