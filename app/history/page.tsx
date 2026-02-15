@@ -219,8 +219,9 @@ export default function HistoryPage() {
       if (!user) return;
       setLoading(true);
       try {
-        const url = `${apiBase}/api/explanations/user?uid=${user.uid}`;
-        const tutUrl = `${apiBase}/api/explanations/learn/user?uid=${user.uid}`;
+        const base = apiBase && apiBase.length ? apiBase : "";
+        const url = `${base}/api/explanations/user?uid=${user.uid}`;
+        const tutUrl = `${base}/api/explanations/learn/user?uid=${user.uid}`;
 
         const [expRes, tutRes] = await Promise.all([fetch(url), fetch(tutUrl)]);
 

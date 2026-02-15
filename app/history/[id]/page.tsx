@@ -4,22 +4,41 @@ import { notFound } from "next/navigation";
 import CodeViewer from "./CodeViewer";
 import { gunzipSync } from "node:zlib";
 
-const apiBase =
-  process.env.NEXT_PUBLIC_API_BASE ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+const apiBaseCandidates = [
+  process.env.NEXT_PUBLIC_API_BASE,
+  process.env.API_BASE,
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  "", // relative to same host
+  "https://explainmycode-backend-y6b2.onrender.com",
+].filter(Boolean) as string[];
+
+async function fetchFirst<T>(path: string): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+  const errors: string[] = [];
+  for (const base of apiBaseCandidates) {
+    try {
+      const url = `${base}${path}`;
+      const res = await fetch(url, { cache: "no-store" });
+      if (res.ok) {
+        return { ok: true, data: (await res.json()) as T };
+      }
+      errors.push(`${url}: ${res.status}`);
+    } catch (e: any) {
+      errors.push(`${base}${path}: ${e?.message || "fetch failed"}`);
+    }
+  }
+  return { ok: false, error: errors.join(" | ") };
+}
 
 async function fetchExplanation(id: string) {
-  const base = apiBase || "";
-  const res = await fetch(`${base}/api/explanations/${id}`, { cache: "no-store" });
-  if (res.ok) return { type: "explanation" as const, data: await res.json() };
-  return null;
+  const res = await fetchFirst(`/api/explanations/${id}`);
+  if (res.ok) return { type: "explanation" as const, data: res.data };
+  return { error: res.error };
 }
 
 async function fetchTutorial(id: string) {
-  const base = apiBase || "";
-  const res = await fetch(`${base}/api/explanations/learn/${id}`, { cache: "no-store" });
-  if (res.ok) return { type: "tutorial" as const, data: await res.json() };
-  return null;
+  const res = await fetchFirst(`/api/explanations/learn/${id}`);
+  if (res.ok) return { type: "tutorial" as const, data: res.data };
+  return { error: res.error };
 }
 
 function sanitizeCode(raw?: string | null) {
@@ -58,15 +77,36 @@ function sanitizeCode(raw?: string | null) {
   return raw;
 }
 
-export default async function HistoryDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function HistoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const explanation = await fetchExplanation(id);
-  const tutorial = explanation ? null : await fetchTutorial(id);
+  const tutorial = !("type" in explanation) ? await fetchTutorial(id) : null;
 
-  const payload = explanation || tutorial;
-  if (!payload) return notFound();
+  const payload = "type" in explanation ? explanation : tutorial && "type" in tutorial ? tutorial : null;
+  const error = !payload ? (("error" in explanation && explanation.error) || (tutorial as any)?.error) : null;
 
-  const { type, data } = payload;
+  if (!payload && !error) return notFound();
+
+  if (!payload && error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#050912] via-[#0a1424] to-[#050912] text-slate-100">
+        <Navbar />
+        <main className="relative mx-auto max-w-5xl px-4 pb-20 pt-24 sm:px-6 lg:px-8">
+          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-red-100">
+            <p className="font-semibold">Could not load this history item.</p>
+            <p className="text-sm opacity-80 break-words">{error}</p>
+          </div>
+          <a href="/history" className="mt-4 inline-flex items-center gap-1 text-primary hover:underline">
+            <span className="material-icons text-xs">arrow_back</span>
+            Back to History
+          </a>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const { type, data } = payload as any;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#050912] via-[#0a1424] to-[#050912] text-slate-100">
